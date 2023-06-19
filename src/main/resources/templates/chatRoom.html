@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>聊天室</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        body {
+            height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main {
+            display: flex;
+            height: 760px;
+            width: 1000px;
+        }
+
+        .sidebar {
+            height: 760px;
+            width: 100px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            height: 760px;
+            flex-grow: 1;
+            width: auto;
+            display: flex;
+            flex-flow: column;
+            border-radius: 4px;
+            border: 0.5px solid #e0e0e0;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .top {
+            height: 40px;
+            line-height: 40px;
+            text-align: center;
+            border: 0.5px solid #e0e0e0;
+        }
+
+        .content {
+            width: calc(100% - 40px);
+            padding: 20px;
+            overflow-y: scroll;
+            flex: 1;
+        }
+
+        .content:hover::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .bubble {
+            max-width: 400px;
+            padding: 10px;
+            border-radius: 5px;
+            position: relative;
+            color: #000;
+            word-wrap: break-word;
+            word-break: normal;
+        }
+
+        .item-left .bubble {
+            margin-left: 15px;
+            background-color: #fff;
+        }
+
+        .item-left .bubble:before {
+            content: "";
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-top: 10px solid transparent;
+            border-right: 10px solid #fff;
+            border-bottom: 10px solid transparent;
+            left: -20px;
+        }
+
+        .item-right .bubble {
+            margin-right: 15px;
+            background-color: #12b7f5;
+            /*background-color: #9eea6a;*/
+        }
+
+        .item-right .bubble:before {
+            content: "";
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 10px solid #12b7f5;
+            border-top: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            right: -20px;
+        }
+
+        .item {
+            margin-top: 15px;
+            display: flex;
+            width: 100%;
+        }
+
+        .item.item-right {
+            justify-content: flex-end;
+        }
+
+        .item.item-center {
+            justify-content: center;
+        }
+
+        .item.item-center span {
+            font-size: 12px;
+            padding: 2px 4px;
+            color: #fff;
+            background-color: #dadada;
+            border-radius: 3px;
+            -moz-user-select: none; /*火狐*/
+            -webkit-user-select: none; /*webkit浏览器*/
+            -ms-user-select: none; /*IE10*/
+            -khtml-user-select: none; /*早期浏览器*/
+            user-select: none;
+        }
+
+        .avatar img {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+        }
+
+        .input-area {
+            border-top: 0.5px solid #e0e0e0;
+            height: 150px;
+            display: flex;
+            flex-flow: column;
+            background-color: #fff;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 5px;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            overflow-y: auto;
+            overflow-x: hidden;
+            outline: none;
+            resize: none;
+        }
+
+        .button-area {
+            display: flex;
+            height: 40px;
+            margin-right: 10px;
+            line-height: 40px;
+            padding: 5px;
+            justify-content: flex-end;
+        }
+
+        .button-area button {
+            width: 80px;
+            border: none;
+            outline: none;
+            border-radius: 4px;
+            float: right;
+            cursor: pointer;
+        }
+
+        /* 设置滚动条的样式 */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        /* 滚动槽 */
+        ::-webkit-scrollbar-track {
+            -webkit-box-shadow: inset006pxrgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        /* 滚动条滑块 */
+        ::-webkit-scrollbar-thumb {
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0);
+            -webkit-box-shadow: inset006pxrgba(0, 0, 0, 0.5);
+        }
+
+    </style>
+    <!--在该页面中要展示的是自己发布的所有任务名称-->
+    <link rel="stylesheet" th:href="@{/lib/layui-v2.6.3/css/layui.css}" media="all">
+    <script th:src="@{/lib/layui-v2.6.3/layui.js}"></script>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.2.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="main">
+    <div class="sidebar">
+        <form class="layui-form" action="">
+            <select name="city" lay-verify="required" lay-filter="all">
+                <option th:each="user : ${users}" th:value="${user.username}" th:text="${user.username}"></option>
+            </select>
+        </form>
+    </div>
+    <div class="container">
+        <!--信息栏：主要包括聊天对象、消息栏和发送栏-->
+        <div class="top" th:text="${toUserName}">
+            所有人
+        </div>
+        <div class="content">
+
+        </div>
+        <div class="input-area">
+            <!--发送栏-->
+            <div class="my-1">
+                <input id="img" type="file" value="选择文件"/>
+                <button id="fileBtn" class="btn-primary" onclick="send2()">上传</button>
+            </div>
+
+            <textarea name="text" id="textarea"></textarea>
+
+            <div class="button-area">
+                <button id="send-btn" onclick="send()">发 送</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script th:inline="javascript">
+
+    let webSocket;
+    let username = [[${session.username}]]
+    let toUserName
+    //chatMessages:[{text: 'fdewfwf', sender: '1', receiver: '2', sendtime: '2023年03月11日'},{...}]
+    let chatMessages//是一个数组，里面存储了双方过去交流的所有信息
+
+    layui.use(['form'],function(){
+        var form = layui.form;
+        let $ = layui.jquery;
+        //选择发送方进行信息发送
+        form.on('select(all)',function(data){
+            //更新当前联系窗口所属者信息
+            document.querySelector('.top').innerHTML = data.value;
+            //更新消息块：删除原有消息
+            // 块(清空子元素即可)，创建新的消息块
+            var content  = document.querySelector('.content');
+            content.innerHTML = ""
+            toUserName = data.value;//获取要发送者信息
+            //获取历史聊天记录
+            $.ajax({
+                url: '/keshe/getMessage?username='+username+"&toUserName="+toUserName,
+                type: 'get',
+                dataType: 'json',//告知服务器，希望返回json格式。如果不写则自动去判断服务器返回数据类型
+                success: function (res) {
+                    //判断后端返回结果
+                    if (res.code == 0) {
+                        chatMessages = res.data;
+                        //渲染历史记录
+                        renderHistory(chatMessages);
+                    } else {
+                        return layer.msg('历史记录查询失败');
+                    }
+                }
+            })
+        });
+    })
+
+    //在进入聊天室时要给出提示:您已进入聊天室
+    let item0 = document.createElement('div');
+    item0.className = 'item item-center';
+    item0.innerHTML = `<span>` + '你已进入聊天室，现在可以开始聊天了。' + `</span>`;
+    document.querySelector('.content').appendChild(item0);
+    document.querySelector('#textarea').value = '';
+    document.querySelector('#textarea').focus();
+    //滚动条置底
+    let height = document.querySelector('.content').scrollHeight;
+    document.querySelector(".content").scrollTop = height;
+
+    //渲染历史记录到聊天框中
+    function renderHistory(chatMessages) {
+        let date = new Date();//获取当前时间，当日期是昨天时则显示“昨日”否则显示正常日期
+        for (let i = 0; i < chatMessages.length; i++) {
+            let datetime = new Date(chatMessages[i].sendtime)
+            /*
+            * 第一步：判断这个消息是否需要显示时间
+            * 第二步：其次就是打印该消息
+            * */
+            //判断需要显示时间的情况
+            if (i == 0) {
+                let item1 = document.createElement('div');
+                //第一条消息直接显示日期就行了：如果是今天就只是显示时分，是昨天就显示昨天，是其它日期就直接显示日期
+                if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && datetime.getDate() == date.getDate()) {
+                    //是今天
+                    item1.className = 'item item-center';
+                    item1.innerHTML = `<span>` + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                } else if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && (datetime.getDate() == date.getDate() - 1)) {
+                    //是昨天
+                    item1.className = 'item item-center';
+                    item1.innerHTML = `<span>` + '昨天 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                } else {
+                    //前天及以前
+                    item1.className = 'item item-center';
+                    item1.innerHTML = `<span>` + datetime.getMonth() + 1 + '月' + datetime.getDate() + '日 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                }
+                document.querySelector('.content').appendChild(item1);
+            } else {
+                let datetime2 = new Date(chatMessages[i - 1].sendtime)
+                //判断是不是过了一天：是同一天的就不用显示日期了，不是同一天就显示日期
+                if (datetime.getDate() != datetime2.getDate()) {
+                    let item1 = document.createElement('div');//不是同一天必然需要显示时间
+                    //差别一天；判断是不是今天，如果是今天就只是显示时分，是昨天就显示昨天，是其它日期就直接显示日期
+                    if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && datetime.getDate() == date.getDate()) {
+                        //是今天
+                        item1.className = 'item item-center';
+                        item1.innerHTML = `<span>` + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                    } else if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && (datetime.getDate() == date.getDate() - 1)) {
+                        //是昨天
+                        item1.className = 'item item-center';
+                        item1.innerHTML = `<span>` + '昨天 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                    } else {
+                        //前天及以前
+                        item1.className = 'item item-center';
+                        item1.innerHTML = `<span>` + datetime.getMonth() + 1 + '月' + datetime.getDate() + '日 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                    }
+                    document.querySelector('.content').appendChild(item1);
+                }
+            }
+            //第二步:显示消息
+            let item = document.createElement('div');
+            if (chatMessages[i].sender === username) {//我发送的这个消息
+                item.className = 'item item-right';
+                item.innerHTML = `<div class="bubble bubble-right">` + chatMessages[i].text + `</div><div class="avatar"><img src="https://img.zcool.cn/community/01d5265944e531a8012193a3479c3c.jpg@1280w_1l_2o_100sh.jpg" /></div>`;
+            } else {//别人发布的消息
+                item.className = 'item item-left';
+                item.innerHTML = `<div class="avatar"><img src="https://img.zcool.cn/community/01d5265944e531a8012193a3479c3c.jpg@1280w_1l_2o_100sh.jpg" /></div><div class="bubble bubble-left">` + chatMessages[i].text + `</div>`;
+            }
+            document.querySelector('.content').appendChild(item);
+            document.querySelector('#textarea').value = '';
+            document.querySelector('#textarea').focus();
+            //滚动条置底
+            let height = document.querySelector('.content').scrollHeight;
+            document.querySelector(".content").scrollTop = height;
+        }
+        
+    }
+   /* * 渲染历史记录
+    * 关于时间是否显示，我们按照日期划分，只有日期不同时才会显示时间，这是一个数组去重问题
+    * */
+    /*let date = new Date();//获取当前时间，当日期是昨天时则显示“昨日”否则显示正常日期
+    for (let i = 0; i < chatMessages.length; i++) {
+        let datetime = new Date(chatMessages[i].sendtime)
+        /!*
+        * 第一步：判断这个消息是否需要显示时间
+        * 第二步：其次就是打印该消息
+        * *!/
+        //判断需要显示时间的情况
+        if (i == 0) {
+            let item1 = document.createElement('div');
+            //第一条消息直接显示日期就行了：如果是今天就只是显示时分，是昨天就显示昨天，是其它日期就直接显示日期
+            if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && datetime.getDate() == date.getDate()) {
+                //是今天
+                item1.className = 'item item-center';
+                item1.innerHTML = `<span>` + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+            } else if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && (datetime.getDate() == date.getDate() - 1)) {
+                //是昨天
+                item1.className = 'item item-center';
+                item1.innerHTML = `<span>` + '昨天 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+            } else {
+                //前天及以前
+                item1.className = 'item item-center';
+                item1.innerHTML = `<span>` + datetime.getMonth() + 1 + '月' + datetime.getDate() + '日 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+            }
+            document.querySelector('.content').appendChild(item1);
+        } else {
+            let datetime2 = new Date(chatMessages[i - 1].sendtime)
+            //判断是不是过了一天：是同一天的就不用显示日期了，不是同一天就显示日期
+            if (datetime.getDate() != datetime2.getDate()) {
+                let item1 = document.createElement('div');//不是同一天必然需要显示时间
+                //差别一天；判断是不是今天，如果是今天就只是显示时分，是昨天就显示昨天，是其它日期就直接显示日期
+                if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && datetime.getDate() == date.getDate()) {
+                    //是今天
+                    item1.className = 'item item-center';
+                    item1.innerHTML = `<span>` + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                } else if (datetime.getFullYear() == date.getFullYear() && datetime.getMonth() == date.getMonth() && (datetime.getDate() == date.getDate() - 1)) {
+                    //是昨天
+                    item1.className = 'item item-center';
+                    item1.innerHTML = `<span>` + '昨天 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                } else {
+                    //前天及以前
+                    item1.className = 'item item-center';
+                    item1.innerHTML = `<span>` + datetime.getMonth() + 1 + '月' + datetime.getDate() + '日 ' + datetime.getHours() + ':' + datetime.getMinutes() + `</span>`;
+                }
+                document.querySelector('.content').appendChild(item1);
+            }
+        }
+        //第二步:显示消息
+        let item = document.createElement('div');
+        if (chatMessages[i].sender === username) {//我发送的这个消息
+            if (method === 1) { //发送者为接收者，也就是说我为任务处理者，接收到该消息，男孩头像
+                item.className = 'item item-right';
+                item.innerHTML = `<div class="bubble bubble-right">` + chatMessages[i].text + `</div><div class="avatar"><img src="https://i.328888.xyz/2023/03/11/s2WPZ.png" /></div>`;
+            } else {
+                item.className = 'item item-right';
+                item.innerHTML = `<div class="bubble bubble-right">` + chatMessages[i].text + `</div><div class="avatar"><img src="https://i.328888.xyz/2023/03/11/s20tF.png" /></div>`;
+            }
+        } else {//别人发布的消息
+            if (method == 1) {
+                //发送者为接收者，因此对方为发布者
+                item.className = 'item item-left';
+                item.innerHTML = `<div class="avatar"><img src="https://i.328888.xyz/2023/03/11/s20tF.png" /></div><div class="bubble bubble-left">` + chatMessages[i].text + `</div>`;
+            } else {
+                item.className = 'item item-left';
+                item.innerHTML = `<div class="avatar"><img src="https://i.328888.xyz/2023/03/11/s2WPZ.png" /></div><div class="bubble bubble-left">` + chatMessages[i].text + `</div>`;
+            }
+        }
+        document.querySelector('.content').appendChild(item);
+        document.querySelector('#textarea').value = '';
+        document.querySelector('#textarea').focus();
+        //滚动条置底
+        let height = document.querySelector('.content').scrollHeight;
+        document.querySelector(".content").scrollTop = height;
+    }*/
+
+    function send() {
+        let text = document.querySelector('#textarea').value;
+        if (!text) {
+            alert('请输入内容');
+            return;
+        }
+        let item = document.createElement('div');
+        item.className = 'item item-right';
+        item.innerHTML = `<div class="bubble bubble-right">${text}</div><div class="avatar"><img src="https://img.zcool.cn/community/01d5265944e531a8012193a3479c3c.jpg@1280w_1l_2o_100sh.jpg" /></div>`;
+        document.querySelector('.content').appendChild(item);
+        document.querySelector('#textarea').value = '';
+        document.querySelector('#textarea').focus();
+        //滚动条置底
+        let height = document.querySelector('.content').scrollHeight;
+        document.querySelector(".content").scrollTop = height;
+        //websocket转发消息:发送者名称、message
+        let message = {
+            "text": text,
+            "to": toUserName
+        };
+        webSocket.send(JSON.stringify(message), username)
+    }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    function send2() {
+        let files = [];
+        files = $("#file")[0].files;
+        if (files.length === 0) {
+            alert('请选择文件');
+            return;
+        }
+        let item = document.createElement('div');
+        item.className = 'item item-right';
+        item.innerHTML = `<div class="bubble bubble-right">${text}</div><div class="avatar"><img src="https://img.zcool.cn/community/01d5265944e531a8012193a3479c3c.jpg@1280w_1l_2o_100sh.jpg" /></div>`;
+        document.querySelector('.content').appendChild(item);
+        document.querySelector('#textarea').value = '';
+        document.querySelector('#textarea').focus();
+        //滚动条置底
+        let height = document.querySelector('.content').scrollHeight;
+        document.querySelector(".content").scrollTop = height;
+        //发送文件名
+        file = files[0];
+
+        let data = {
+            operation: 'filename',
+            msg: file.name,
+        };
+
+        //将 data 转成 json 字符串
+        webSocket.send(JSON.stringify(data));
+
+
+    }
+    let fileUploadSize = 0;
+
+    //发送文件
+    function sendFile(file) {
+        let dist = file.size < fileUploadSize + 1024 ? file.size : fileUploadSize + 1024;
+        //切分文件
+        let blob = file.slice(fileUploadSize, dist);
+        //文件读取对象
+        let reader = new FileReader();
+
+        //文件加载后的回调函数
+        reader.onload = ev => {
+            let buffer = ev.target.result;
+            webSocket.send(buffer);
+        }
+        //二进制加载文件
+        reader.readAsArrayBuffer(blob);
+    }
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+    //每次页面刷新，重新建立链接
+    if ("WebSocket" in window) {
+        webSocket = new WebSocket("ws://localhost:9999/chat/" + username);
+
+        //一下都是多线程状态，也就是一直处于监听状态
+        //连通之后的回调事件
+        webSocket.onopen = function () {
+            console.log("已经连通了websocket");
+        };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        //接收后台服务端的消息:我们要判断接收者是否打开了与其聊天界面，如果打开了则显示否则提醒即可
+        webSocket.onmessage = function (evt) {
+
+
+                //这个 data 和刚刚的 Message 一样
+                let data = {
+                    operation: '',
+                    msg: ''
+                };
+
+                data = JSON.parse(evt.data);
+                switch (data.operation) {
+                    case "tip":
+
+                        break;
+                    case "msg":     //显示消息
+
+                        break;
+                    case "filename":
+                        // $('#textarea').append(data.msg + '\n');
+                        sendFile(file);
+                        break;
+                    case "file-upload-success":
+                       // $('#textarea').append(data.msg + '\n');
+                        break;
+                    case "file-upload-fail":
+                        //$('#textarea').append(data.msg + '\n');
+                        break;
+                }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            let received_msg = evt.data;
+            console.log("数据已接收:" + received_msg);
+            let obj = JSON.parse(received_msg);
+            let text = obj.text;
+            let from = obj.from;//发送者
+            if(from  !== toUserName){//没打开聊天框
+                alert(from+" 发来了1条消息")
+            }else{
+                let item = document.createElement('div');
+                item.className = 'item item-left';
+                item.innerHTML = `<div class="avatar"><img src="https://img.zcool.cn/community/01d5265944e531a8012193a3479c3c.jpg@1280w_1l_2o_100sh.jpg" /></div><div class="bubble bubble-left">${text}</div>`;
+                document.querySelector('.content').appendChild(item);
+                document.querySelector('#textarea').value = '';
+                document.querySelector('#textarea').focus();
+                //滚动条置底
+                let height = document.querySelector('.content').scrollHeight;
+                document.querySelector(".content").scrollTop = height;
+            }
+        };
+
+        //连接关闭的回调事件
+        webSocket.onclose = function () {
+            console.log("连接已关闭...");
+            setMessageInnerHTML("连接已经关闭....");
+        };
+    } else {
+        // 浏览器不支持 WebSocket
+        alert("您的浏览器不支持 WebSocket!");
+    }
+
+
+
+</script>
+</html>
